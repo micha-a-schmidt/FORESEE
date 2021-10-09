@@ -3,6 +3,7 @@ import matplotlib
 import os
 from matplotlib import pyplot as plt
 import math
+import cmath
 import random
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
@@ -30,6 +31,7 @@ class Utility():
         elif pid in ["3312","-3312"]: return 1.32171
         elif pid in ["3334","-3334"]: return 1.67245
         elif pid in ["113"         ]: return 0.77545
+        elif pid in ["213" ,"-213" ]: return 0.77511
         elif pid in ["223"         ]: return 0.77524
         elif pid in ["333"         ]: return 1.019461
         elif pid in ["411" ,"-411" ]: return 1.86961
@@ -49,7 +51,12 @@ class Utility():
         elif pid in ["25"          ]: return 125.
         elif pid in ["553"         ]: return 9.46
         elif pid in ["0"           ]: return mass
-    
+
+    def gamma(self,pid):
+        if pid in ["223"]: return 0.00868
+        elif pid in ["113"]: return 0.1474
+        elif pid in ["333"]: return 0.004249
+
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
         elif pid in ["2212","-2212"]: tau = 10**8
@@ -64,6 +71,19 @@ class Utility():
         elif pid in ["3312","-3312"]: tau = 1.639*10**-10
         elif pid in ["3334","-3334"]: tau = 8.21*10**-11
         return 3*10**8 * tau
+
+    def BW_V(self,pid,m):
+        mVs=pow(self.masses(pid),2)
+        return mVs/(mVs-pow(m,2)-1j*m*self.gamma(pid))
+    
+    def Kaellen0(self,x,y,z):
+        return x**2+y**2+z**2-2.*x*y-2.*x*z-2.*y*z
+
+    def Kaellen(self,pid0,pid1,m):
+        mVs=pow(self.masses(pid0),2)
+        mPs=pow(self.masses(pid1),2)
+        ms=pow(m,2)
+        return self.Kaellen0(mVs,mPs,ms)
     
     ###############################
     #  Utility Functions
