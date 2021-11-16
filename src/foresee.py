@@ -149,7 +149,9 @@ class Model(Utility):
         self.br_functions = {}
         for channel, filename in zip(modes, filenames):
             data = self.readfile(filename).T
-            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+# NEW CODE
+#            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2]) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
             self.br_functions[channel] = function
 
     def get_br(self,mode,mass,coupling=1):
@@ -624,19 +626,29 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
-        for coupling in couplings:
-            ctau = model.get_ctau(mass, coupling)
-            if self.channels is None: br = 1.
-            else:
-                br = 0.
-                for channel in self.channels: br+=model.get_br(channel, mass, coupling)
-            ctaus.append(ctau)
-            brs.append(br)
-            nsignals.append(0.)
-            stat_t.append([])
-            stat_e.append([])
-            stat_w.append([])
+# NEW CODE
+        ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
+        if self.channels is None: 
+            brs = [ 1. for c in couplings ]
+        else:
+            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings)[0] for channel in self.channels ]),axis=0))   # same as above
+        nsignals = [ 0 for c in couplings ]
+        stat_t = [[] for c in couplings]
+        stat_e = [[] for c in couplings]
+        stat_w = [[] for c in couplings]
+        #ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
+        # for coupling in couplings:
+        #     ctau = model.get_ctau(mass, coupling)
+        #     if self.channels is None: br = 1.
+        #     else:
+        #         br = 0.
+        #         for channel in self.channels: br+=model.get_br(channel, mass, coupling)
+        #     ctaus.append(ctau)
+        #     brs.append(br)
+        #     nsignals.append(0.)
+        #     stat_t.append([])
+        #     stat_e.append([])
+        #     stat_w.append([])
     
         # loop over production modes
         for key in modes:
