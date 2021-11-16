@@ -201,6 +201,12 @@ class Model(Utility):
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+# CHECK: NEW CODE STILL NEEDED?
+#         for channel, filename in zip(modes, filenames):
+#             data = self.readfile(filename).T
+# # NEW CODE
+# #            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+#             function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2]) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -722,6 +728,18 @@ class Foresee(Utility):
             stat_e.append([])
             stat_w.append([])
 
+# CHECK: NEW CODE STILL NEEDED
+# NEW CODE
+        # ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
+        # if self.channels is None: 
+        #     brs = [ 1. for c in couplings ]
+        # else:
+        #     brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings)[0] for channel in self.channels ]),axis=0))   # same as above
+        # nsignals = [ 0 for c in couplings ]
+        # stat_t = [[] for c in couplings]
+        # stat_e = [[] for c in couplings]
+        # stat_w = [[] for c in couplings]
+#############
         # loop over production modes
         for key in modes:
 
