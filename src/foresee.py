@@ -767,14 +767,20 @@ class Foresee(Utility):
                     ctau, br =ctaus[icoup], brs[icoup]
                     try:
                         dbar = ctau*p.p/mass
-                        if abs(self.distance/dbar)>500:
+                        if self.distance/dbar>500:
                             prob_decay=0.
+                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                            nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
+                        elif self.distance/dbar<0:
+                            print("decay rate unphysical, Gamma<0")
+                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                            nsignals[icoup]=-1.
                         else:
                             prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                            nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
                     except OverflowError as err:
                         print("overflow error {} dbar={} prob_decay={}".format(err,dbar,prob_decay))
-                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
                     stat_t[icoup].append(p.pt/p.pz)
                     stat_e[icoup].append(p.e)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
