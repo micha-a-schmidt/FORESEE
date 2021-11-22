@@ -765,8 +765,14 @@ class Foresee(Utility):
                 for icoup,coup in enumerate(couplings):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
-                    dbar = ctau*p.p/mass
-                    prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                    try:
+                        dbar = ctau*p.p/mass
+                        if abs(self.distance/dbar)>500:
+                            prob_decay=0.
+                        else:
+                            prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                    except OverflowError as err:
+                        print("overflow error {} dbar={} prob_decay={}".format(err,dbar,prob_decay))
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
                     stat_t[icoup].append(p.pt/p.pz)
