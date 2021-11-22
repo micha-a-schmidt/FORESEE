@@ -150,8 +150,8 @@ class Model(Utility):
         for channel, filename in zip(modes, filenames):
             data = self.readfile(filename).T
 # NEW CODE
-#            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-            function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2]) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
+            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+#            function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2],kx=1,ky=1,s=0) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
             self.br_functions[channel] = function
 
     def get_br(self,mode,mass,coupling=1):
@@ -631,7 +631,8 @@ class Foresee(Utility):
         if self.channels is None: 
             brs = [ 1. for c in couplings ]
         else:
-            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings)[0] for channel in self.channels ]),axis=0))   # same as above
+            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
+        #print(brs)
         nsignals = [ 0 for c in couplings ]
         stat_t = [[] for c in couplings]
         stat_e = [[] for c in couplings]
@@ -675,9 +676,9 @@ class Foresee(Utility):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
-                    prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    nsignals[icoup] += weight_event * couplingfac * prob_decay * br
+                    nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
                     stat_t[icoup].append(p.pt/p.pz)
                     stat_e[icoup].append(p.e)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
