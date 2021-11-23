@@ -282,6 +282,9 @@ class Foresee(Utility):
         
         tx = [np.arctan(mom.pt/mom.pz) for mom in momenta]
         px = [mom.p for mom in momenta]
+        # for mom in momenta:
+        #     if mom.p<0:
+        #         print([momenta[0], momenta[0].p])
         
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
         
@@ -675,22 +678,21 @@ class Foresee(Utility):
                 for icoup,coup in enumerate(couplings):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
-                    try:
-                        dbar = ctau*p.p/mass
-                        if self.distance/dbar>500:
+                    dbar = ctau*p.p/mass
+                    if dbar<0:
+                        print("dbar negative ctau={} p.p={} mass={}".format(ctau,p.p,mass))
+                        prob_decay=0.
+                    else:
+                        if self.distance/dbar>250.:
                             prob_decay=0.
-                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                            nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
-                        elif self.distance/dbar<0:
-                            print("decay rate unphysical, Gamma<0")
-                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                            nsignals[icoup]=-1.
                         else:
-                            prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
-                            couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                            nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
-                    except OverflowError as err:
-                        print("overflow error {} dbar={} prob_decay={}".format(err,dbar,prob_decay))
+                            try:
+                                prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                            except OverflowError as err:
+                                print("overflow dbar={}, p.p={} distance={}".format(dbar,p.p,self.distance))
+                                prob_decay=0.
+                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
                     stat_t[icoup].append(p.pt/p.pz)
                     stat_e[icoup].append(p.e)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
