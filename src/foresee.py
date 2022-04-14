@@ -9,11 +9,17 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 
+# NEW CODE
 hbarc=0.1973269804e-15 # GeV m
-phi_ctau=readfile("phi_ctau.txt")
+phi_ctau = []
+with open("src/phi_ctau.txt") as f:
+    for line in f:
+        if line[0]=="#":continue
+        words = [float(elt.strip()) for elt in line.split( )]
+        phi_ctau.append(words)
+phi_ctau=np.array(phi_ctau)
 GammaPhi = interpolate.interp1d(phi_ctau[:,0],hbarc/phi_ctau[:,1],fill_value="extrapolate")
- 
-
+## 
 
 class Utility():
 
@@ -87,7 +93,7 @@ class Utility():
     def BW_V(self,pid,m):
         mVs=pow(self.masses(pid),2)
         return mVs/(mVs-pow(m,2)-1j*m*self.gamma(pid))
-    
+ 
     def gamPhi(self,m):
         return GammaPhi(m) 
    
@@ -113,6 +119,7 @@ class Utility():
                 words = [float(elt.strip()) for elt in line.split( )]
                 array.append(words)
         return np.array(array)
+
 
 class Model(Utility):
 
@@ -252,6 +259,8 @@ class Model(Utility):
         self.production[label]=["direct", energy, coupling_ref, condition, masses, scaling]
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
+        repl_coupling={"coupling":coupling,"mass":mass}
+        repl_coupling_ref={"coupling":coupling_ref,"mass":mass}
         if self.production[key][0] == "2body":
             scaling = self.production[key][8]
             if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
@@ -263,6 +272,16 @@ class Model(Utility):
         if self.production[key][0] == "mixing":
             scaling = self.production[key][6]
             if scaling == "manual":  return eval(self.production[key][2], {"coupling":coupling})**2/eval(self.production[key][2], {"coupling":coupling_ref})**2
+        #     scaling = self.production[key][7]
+        #     if scaling == "manual": return eval(self.production[key][3],repl_coupling )/eval(self.production[key][3], repl_coupling_ref)
+        #     else: return (coupling/coupling_ref)**scaling
+        # if self.production[key][0] == "3body":
+        #     scaling = self.production[key][8]
+        #     if scaling == "manual": return eval(self.production[key][4],repl_coupling )/eval(self.production[key][4], repl_coupling_ref)
+        #     else: return (coupling/coupling_ref)**scaling
+        # if self.production[key][0] == "mixing":
+        #     scaling = self.production[key][5]
+        #     if scaling == "manual":  return eval(self.production[key][2], repl_coupling)**2/eval(self.production[key][2], repl_coupling_ref)**2
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "direct":
             scaling = self.production[key][5]
@@ -493,7 +512,6 @@ class Foresee(Utility):
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
-
         # prepare output
         particles, weights = [], []
 
@@ -601,7 +619,6 @@ class Foresee(Utility):
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
                 momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
-
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
                     # if mother is shortlived, add factor that requires them to decay before absorption
