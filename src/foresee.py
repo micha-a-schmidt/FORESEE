@@ -201,25 +201,46 @@ class Model(Utility):
         
     def add_production_direct(self, label, energy, coupling_ref=1, condition=None, massrange=None, scaling=2):
         self.production[label]=["direct", energy, coupling_ref, condition, massrange, scaling]
+    
+    def eval(self,br,mass,coupling):
+        return eval(br)
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
-        repl_coupling={"coupling":coupling,"mass":mass}
-        repl_coupling_ref={"coupling":coupling_ref,"mass":mass}
         if self.production[key][0] == "2body":
             scaling = self.production[key][7]
-            if scaling == "manual": return eval(self.production[key][3],repl_coupling )/eval(self.production[key][3], repl_coupling_ref)
+            if scaling == "manual": return self.eval(self.production[key][3],mass,coupling )/self.eval(self.production[key][3], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
             scaling = self.production[key][8]
-            if scaling == "manual": return eval(self.production[key][4],repl_coupling )/eval(self.production[key][4], repl_coupling_ref)
+            if scaling == "manual": return self.eval(self.production[key][4],mass,coupling )/self.eval(self.production[key][4], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
             scaling = self.production[key][5]
-            if scaling == "manual":  return eval(self.production[key][2], repl_coupling)**2/eval(self.production[key][2], repl_coupling_ref)**2
+            if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling_ref)**2
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "direct":
             scaling = self.production[key][5]
             return (coupling/coupling_ref)**scaling
+
+
+    # def get_production_scaling(self, key, mass, coupling, coupling_ref):
+    #     repl_coupling={"coupling":coupling,"mass":mass}
+    #     repl_coupling_ref={"coupling":coupling_ref,"mass":mass}
+    #     if self.production[key][0] == "2body":
+    #         scaling = self.production[key][7]
+    #         if scaling == "manual": return eval(self.production[key][3],repl_coupling )/eval(self.production[key][3], repl_coupling_ref)
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "3body":
+    #         scaling = self.production[key][8]
+    #         if scaling == "manual": return eval(self.production[key][4],repl_coupling )/eval(self.production[key][4], repl_coupling_ref)
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "mixing":
+    #         scaling = self.production[key][5]
+    #         if scaling == "manual":  return eval(self.production[key][2], repl_coupling)**2/eval(self.production[key][2], repl_coupling_ref)**2
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "direct":
+    #         scaling = self.production[key][5]
+    #         return (coupling/coupling_ref)**scaling
 
 class Foresee(Utility):
 
@@ -649,11 +670,14 @@ class Foresee(Utility):
         if modes is None: modes = [key for key in model.production.keys()]
 # NEW CODE
         ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
+
+#        print([ model.get_br(channel,mass,couplings) for channel in self.channels])
         if self.channels is None: 
             brs = [ 1. for c in couplings ]
         else:
-            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
-        #print(brs)
+#            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
+            brs = [ np.sum([ model.get_br(channel,mass,c) for channel in self.channels ]) for c in couplings ]  
+#        print(brs)
         nsignals = [ 0 for c in couplings ]
         stat_t = [[] for c in couplings]
         stat_e = [[] for c in couplings]
@@ -671,7 +695,6 @@ class Foresee(Utility):
         #     stat_t.append([])
         #     stat_e.append([])
         #     stat_w.append([])
-    
         # loop over production modes
         for key in modes:
             
