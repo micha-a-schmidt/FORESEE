@@ -9,6 +9,12 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 
+hbarc=0.1973269804e-15 # GeV m
+phi_ctau=readfile("phi_ctau.txt")
+GammaPhi = interpolate.interp1d(phi_ctau[:,0],hbarc/phi_ctau[:,1],fill_value="extrapolate")
+ 
+
+
 class Utility():
 
     ###############################
@@ -76,6 +82,9 @@ class Utility():
         mVs=pow(self.masses(pid),2)
         return mVs/(mVs-pow(m,2)-1j*m*self.gamma(pid))
     
+    def gamPhi(self,m):
+        return GammaPhi(m) 
+   
     def Kaellen0(self,x,y,z):
         return x**2+y**2+z**2-2.*x*y-2.*x*z-2.*y*z
 
