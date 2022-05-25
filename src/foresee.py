@@ -789,46 +789,19 @@ class Foresee(Utility):
 
 # CHECK: NEW CODE STILL NEEDED
 # NEW CODE
-<<<<<<< HEAD
-        # ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
-        # if self.channels is None: 
-        #     brs = [ 1. for c in couplings ]
-        # else:
-        #     brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
-        # #print(brs)
-        # nsignals = [ 0 for c in couplings ]
-        # stat_t = [[] for c in couplings]
-        # stat_e = [[] for c in couplings]
-        # stat_w = [[] for c in couplings]
-#############
-=======
-        ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
+#         ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
 
-#        print([ model.get_br(channel,mass,couplings) for channel in self.channels])
-        if self.channels is None: 
-            brs = [ 1. for c in couplings ]
-        else:
-#            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
-            brs = [ np.sum([ model.get_br(channel,mass,c) for channel in self.channels ]) for c in couplings ]  
-#        print(brs)
-        nsignals = [ 0 for c in couplings ]
-        stat_t = [[] for c in couplings]
-        stat_e = [[] for c in couplings]
-        stat_w = [[] for c in couplings]
-        #ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
-        # for coupling in couplings:
-        #     ctau = model.get_ctau(mass, coupling)
-        #     if self.channels is None: br = 1.
-        #     else:
-        #         br = 0.
-        #         for channel in self.channels: br+=model.get_br(channel, mass, coupling)
-        #     ctaus.append(ctau)
-        #     brs.append(br)
-        #     nsignals.append(0.)
-        #     stat_t.append([])
-        #     stat_e.append([])
-        #     stat_w.append([])
->>>>>>> 5859857 (fixing issues)
+# #        print([ model.get_br(channel,mass,couplings) for channel in self.channels])
+#         if self.channels is None: 
+#             brs = [ 1. for c in couplings ]
+#         else:
+# #            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
+#             brs = [ np.sum([ model.get_br(channel,mass,c) for channel in self.channels ]) for c in couplings ]  
+# #        print(brs)
+#         nsignals = [ 0 for c in couplings ]
+#         stat_t = [[] for c in couplings]
+#         stat_e = [[] for c in couplings]
+#         stat_w = [[] for c in couplings]
         # loop over production modes
         for key in modes:
 
