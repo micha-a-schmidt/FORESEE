@@ -19,6 +19,11 @@ with open("src/phi_ctau.txt") as f:
         phi_ctau.append(words)
 phi_ctau=np.array(phi_ctau)
 GammaPhi = interpolate.interp1d(phi_ctau[:,0],hbarc/phi_ctau[:,1],fill_value="extrapolate")
+# def GammaPhi(m):
+#     if m<phi_ctau[0,0]:
+#         return 0.
+#     return GammaPhi0(m)
+
 ## 
 
 class Utility():
