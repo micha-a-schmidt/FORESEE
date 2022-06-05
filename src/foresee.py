@@ -74,6 +74,7 @@ class Utility():
         elif pid in ["553"         ]: return 9.460
         elif pid in ["100553"      ]: return 10.023
         elif pid in ["200553"      ]: return 10.355
+        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
 
     def gamma(self,pid):
         if pid in ["223"]: return 0.00868
@@ -365,11 +366,8 @@ class Foresee(Utility):
 
             for n in range(nsample):
                 phi= random.uniform(-math.pi,math.pi)
-                if nsample == 1:
-                    fth, fp = 1,1
-                else:
-                    fth = np.random.normal(1, 0.05, 1)[0]
-                    fp  = np.random.normal(1, 0.05, 1)[0]
+                fth = 10**np.random.uniform(-0.025, 0.025, 1)[0]
+                fp  = 10**np.random.uniform(-0.025, 0.025, 1)[0]
 
                 th_sm=th*fth
                 p_sm=p*fp
@@ -387,7 +385,7 @@ class Foresee(Utility):
         return particles,weights
 
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 50]]):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]]):
 
         #get data
         tmin, tmax, tnum = prange[0]
@@ -979,31 +977,39 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, seed=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling])
+        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=1)
         weighted_raw_data = np.array([energies[0], thetas[0]]).T
         
         # unweight sample
         unweighted_raw_data = random.choices(weighted_raw_data, weights=weights[0], k=numberevent)
         eventweight = sum(weights[0])/float(numberevent)
+        if decaychannels is not None:
+            factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
+            eventweight = eventweight * factor
+            print (factor)
         
         # setup decay channels
         modes = self.model.br_functions.keys()
         branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in modes]
         finalstates = [self.model.br_finalstate[mode] for mode in modes]
-        channels = [[fs, br] for mode, br, fs in zip(modes, branchings, finalstates)]
+        channels = [[[fs, mode], br] for mode, br, fs in zip(modes, branchings, finalstates)]
         br_other = 1-sum(branchings)
-        if br_other>0: channels.append([None, br_other])
+        if br_other>0: channels.append([[None,"unspecified"], br_other])
         channels=np.array(channels).T
         
         # get LLP momenta and decay location
         unweighted_data = []
         for en, theta in unweighted_raw_data:
+            # determine choice of final state
+            while True:
+                pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
+                if (decaychannels is None) or (mode in decaychannels): break
             # momentum
             phi= random.uniform(-math.pi,math.pi)
             mom = math.sqrt(en**2-mass**2)
@@ -1016,8 +1022,7 @@ class Foresee(Utility):
             posz = random.uniform(0,self.length)
             post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
             position = LorentzVector(posx,posy,posz,post)
-            # determine choice of final state
-            pids = random.choices(channels[0], weights=channels[1], k=1)[0]
+            # decay
             pids, finalstate = self.decay_llp(momentum, pids)
             # save
             unweighted_data.append([eventweight, position, momentum, pids, finalstate])
@@ -1163,7 +1168,7 @@ class Foresee(Utility):
         masses, productions, condition="True", energy="14",
         xlims=[0.01,1],ylims=[10**-6,10**-3],
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
 
         # initiate figure
@@ -1201,7 +1206,7 @@ class Foresee(Utility):
         ax.set_ylim(ylims[0],ylims[1])
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label)
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label, ncol=ncol)
 
         # return
         return plt
