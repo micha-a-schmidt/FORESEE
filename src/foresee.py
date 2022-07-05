@@ -3,12 +3,29 @@ import matplotlib
 import os
 from matplotlib import pyplot as plt
 import math
+import cmath
 import random
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 
-FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+"/"
+# NEW CODE
+FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+hbarc=0.1973269804e-15 # GeV m
+phi_ctau = []
+with open("src/phi_ctau.txt") as f:
+    for line in f:
+        if line[0]=="#":continue
+        words = [float(elt.strip()) for elt in line.split( )]
+        phi_ctau.append(words)
+phi_ctau=np.array(phi_ctau)
+GammaPhi = interpolate.interp1d(phi_ctau[:,0],hbarc/phi_ctau[:,1],fill_value="extrapolate")
+# def GammaPhi(m):
+#     if m<phi_ctau[0,0]:
+#         return 0.
+#     return GammaPhi0(m)
+
+## 
 
 class Utility():
 
@@ -33,6 +50,7 @@ class Utility():
         elif pid in ["3334","-3334"]: return 1.67245
         elif pid in ["113"         ]: return 0.77545
         elif pid in ["223"         ]: return 0.78266
+        elif pid in ["213" ,"-213" ]: return 0.77511
         elif pid in ["333"         ]: return 1.019461
         elif pid in ["411" ,"-411" ]: return 1.86961
         elif pid in ["421" ,"-421" ]: return 1.86484
@@ -59,6 +77,11 @@ class Utility():
         elif pid in ["200553"      ]: return 10.355
         elif pid in ["12","-12","14","-14","16","-16"]:  return 0
 
+    def gamma(self,pid):
+        if pid in ["223"]: return 0.00868
+        elif pid in ["113"]: return 0.1474
+        elif pid in ["333"]: return 0.004249
+
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
         elif pid in ["2212","-2212"]: tau = 10**8
@@ -74,6 +97,22 @@ class Utility():
         elif pid in ["3334","-3334"]: tau = 8.21*10**-11
         return 3*10**8 * tau
 
+    def BW_V(self,pid,m):
+        mVs=pow(self.masses(pid),2)
+        return mVs/(mVs-pow(m,2)-1j*m*self.gamma(pid))
+ 
+    def gamPhi(self,m):
+        return GammaPhi(m) 
+   
+    def Kaellen0(self,x,y,z):
+        return x**2+y**2+z**2-2.*x*y-2.*x*z-2.*y*z
+
+    def Kaellen(self,pid0,pid1,m):
+        mVs=pow(self.masses(pid0),2)
+        mPs=pow(self.masses(pid1),2)
+        ms=pow(m,2)
+        return self.Kaellen0(mVs,mPs,ms)
+    
     ###############################
     #  Utility Functions
     ###############################
@@ -87,6 +126,7 @@ class Utility():
                 words = [float(elt.strip()) for elt in line.split( )]
                 array.append(words)
         return np.array(array)
+
 
 class Model(Utility):
 
@@ -184,6 +224,12 @@ class Model(Utility):
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+#         for channel, filename in zip(modes, filenames):
+#             data = self.readfile(filename).T
+# # NEW CODE
+#             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+# #            function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2],kx=1,ky=1,s=0) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
+###############
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -216,8 +262,34 @@ class Model(Utility):
         if label is None: label=pid
         self.production[label]=["mixing", pid, mixing, generator, energy, massrange, scaling]
 
+    ### NEW CODE
+    # def add_production_direct(self, label, energy, coupling_ref=1, condition=None, massrange=None, scaling=2):
+    #     self.production[label]=["direct", energy, coupling_ref, condition, massrange, scaling]
+    
+    # def eval(self,br,mass,coupling):
+    #     return eval(br)
+    # def get_production_scaling(self, key, mass, coupling, coupling_ref):
+    #     if self.production[key][0] == "2body":
+    #         scaling = self.production[key][7]
+    #         if scaling == "manual": return self.eval(self.production[key][3],mass,coupling )/self.eval(self.production[key][3], mass,coupling_ref)
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "3body":
+    #         scaling = self.production[key][8]
+    #         if scaling == "manual": return self.eval(self.production[key][4],mass,coupling )/self.eval(self.production[key][4], mass,coupling_ref)
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "mixing":
+    #         scaling = self.production[key][5]
+    #         if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling_ref)**2
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "direct":
+    #         scaling = self.production[key][5]
+    #         return (coupling/coupling_ref)**scaling
+
+## ORIGINAL CODE
+
     def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
         self.production[label]=["direct", energy, coupling_ref, condition, masses, scaling]
+
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         if self.production[key][0] == "2body":
@@ -236,6 +308,8 @@ class Model(Utility):
             scaling = self.production[key][5]
             return (coupling/coupling_ref)**scaling
 
+###
+   
 class Foresee(Utility):
 
     def __init__(self, path=FORESEE_path+"/"):
@@ -313,6 +387,9 @@ class Foresee(Utility):
 
         tx = [np.arctan(mom.pt/mom.pz) for mom in momenta]
         px = [mom.p for mom in momenta]
+        # for mom in momenta:
+        #     if mom.p<0:
+        #         print([momenta[0], momenta[0].p])
 
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
 
@@ -455,7 +532,6 @@ class Foresee(Utility):
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
-
         # prepare output
         particles, weights = [], []
 
@@ -702,6 +778,21 @@ class Foresee(Utility):
             stat_e.append([])
             stat_w.append([])
 
+# CHECK: NEW CODE STILL NEEDED
+# NEW CODE
+#         ctaus = list(model.get_ctau(mass,couplings))    # the numpy array is converted to a list to make sure there is no issue in the following code which used a list previously
+
+# #        print([ model.get_br(channel,mass,couplings) for channel in self.channels])
+#         if self.channels is None: 
+#             brs = [ 1. for c in couplings ]
+#         else:
+# #            brs = list(np.sum(np.array([ model.get_br(channel,mass,couplings).flatten() for channel in self.channels ]),axis=0))   # same as above
+#             brs = [ np.sum([ model.get_br(channel,mass,c) for channel in self.channels ]) for c in couplings ]  
+# #        print(brs)
+#         nsignals = [ 0 for c in couplings ]
+#         stat_t = [[] for c in couplings]
+#         stat_e = [[] for c in couplings]
+#         stat_w = [[] for c in couplings]
         # loop over production modes
         for key in modes:
 
@@ -727,9 +818,30 @@ class Foresee(Utility):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
+#### NEW CODE
+                    # if dbar<0:
+                    #     print("dbar negative ctau={} p.p={} mass={}".format(ctau,p.p,mass))
+                    #     prob_decay=0.
+                    # else:
+                    #     if self.distance/dbar>250.:
+                    #         prob_decay=0.
+                    #     else:
+                    #         try:
+                    #             prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                    #         except OverflowError as err:
+                    #             print("overflow dbar={}, p.p={} distance={}".format(dbar,p.p,self.distance))
+                    #             prob_decay=0.
+                    # couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    # nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
+
+
+# ORIGINAL CODE
                     prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
+
+                    ##
+
                     stat_t[icoup].append(p.pt/p.pz)
                     stat_e[icoup].append(p.e)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
