@@ -922,7 +922,7 @@ class Foresee(Utility):
             momenta = [p1,p2]
         return pids, momenta
     
-    def write_hepmc_file(self, data, filename, zfront=0):
+    def write_hepmc_file(self, data, filename):
         
         # open file
         f= open(filename,"w")
@@ -948,7 +948,7 @@ class Foresee(Utility):
             f.write("V -1 0 ")
             f.write(str(round(position.x*1000,10))+" ")
             f.write(str(round(position.y*1000,10))+" ")
-            f.write(str(round((position.z+zfront)*1000,10))+" ")
+            f.write(str(round(position.z*1000,10))+" ")
             f.write(str(round(position.t*1000,10))+" ")
             f.write("1 "+npids+" 0\n")
             
@@ -977,7 +977,7 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0):
         
         #set random seed
         random.seed(seed)
@@ -992,7 +992,7 @@ class Foresee(Utility):
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
             eventweight = eventweight * factor
-            print (factor)
+            # print (factor)
         
         # setup decay channels
         modes = self.model.br_functions.keys()
@@ -1017,11 +1017,12 @@ class Foresee(Utility):
             px, py = pt*np.cos(phi), pt*np.sin(phi)
             momentum = LorentzVector(px,py,pz,en)
             # position
+            posz = random.uniform(0,self.length)
             posx = theta*self.distance*np.cos(phi)
             posy = theta*self.distance*np.sin(phi)
-            posz = random.uniform(0,self.length)
-            post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
-            position = LorentzVector(posx,posy,posz,post)
+            post = posz + t0
+            if notime: position = LorentzVector(posx,posy,posz+zfront,0)
+            else     : position = LorentzVector(posx,posy,posz+zfront,post)
             # decay
             pids, finalstate = self.decay_llp(momentum, pids)
             # save
@@ -1034,7 +1035,7 @@ class Foresee(Utility):
         else: filename = self.model.modelpath + filename
           
         # write to HEPMC file
-        self.write_hepmc_file(filename=filename, data=unweighted_data, zfront=zfront)
+        self.write_hepmc_file(filename=filename, data=unweighted_data)
         
     ###############################
     #  Plotting and other final processing
