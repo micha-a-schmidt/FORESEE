@@ -8,8 +8,7 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 
-
-FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+"/"
 
 class Utility():
 
@@ -239,7 +238,7 @@ class Model(Utility):
 
 class Foresee(Utility):
 
-    def __init__(self, path=FORESEE_PATH):
+    def __init__(self, path=FORESEE_path+"/"):
         self.model = None
         self.shortlived = {"321": 20, "-321": 20, "321": 20,  }
         self.selection = "np.sqrt(x.x**2 + x.y**2)< 1"
@@ -361,7 +360,7 @@ class Foresee(Utility):
 
     # show 2d hadronspectrum
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
-        dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
+        dirname = self.dirpath+"files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta(filename,mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w, do_plot=True, prange=prange)
