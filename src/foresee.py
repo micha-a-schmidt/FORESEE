@@ -8,6 +8,9 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 
+
+FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 class Utility():
 
     ###############################
@@ -236,7 +239,7 @@ class Model(Utility):
 
 class Foresee(Utility):
 
-    def __init__(self, path="../../"):
+    def __init__(self, path=FORESEE_PATH):
         self.model = None
         self.shortlived = {"321": 20, "-321": 20, "321": 20,  }
         self.selection = "np.sqrt(x.x**2 + x.y**2)< 1"
