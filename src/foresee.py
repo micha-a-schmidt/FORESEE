@@ -13,7 +13,7 @@ from matplotlib import gridspec
 FORESEE_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 hbarc=0.1973269804e-15 # GeV m
 phi_ctau = []
-with open("src/phi_ctau.txt") as f:
+with open(os.path.join(FORESEE_path,"files","phi_ctau.txt")) as f:
     for line in f:
         if line[0]=="#":continue
         words = [float(elt.strip()) for elt in line.split( )]
@@ -194,6 +194,10 @@ class Model(Utility):
         self.ctau_coupling_ref=None
         self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
 
+    def set_ctau_2d_func(self,func):
+        self.ctau_coupling_ref=None
+        self.ctau_function=func
+    
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
             print ("No lifetime specified. You need to specify lifetime first!")
@@ -224,12 +228,14 @@ class Model(Utility):
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-#         for channel, filename in zip(modes, filenames):
-#             data = self.readfile(filename).T
-# # NEW CODE
-#             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-# #            function = interpolate.SmoothBivariateSpline(data[0], data[1], data[2],kx=1,ky=1,s=0) #, kx=1,ky=1, s=min(len(data[0]),len(data[1])))
-###############
+            self.br_functions[channel] = function
+            self.br_finalstate[channel] = finalstate
+
+    def set_br_2d_func(self,modes,funcs, finalstates=None):
+        self.br_mode="2D"
+        self.br_functions = {}
+        if finalstates==None: finalstates=[None for _ in modes]
+        for channel, function, finalstate in zip(modes, funcs, finalstates):
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -458,12 +464,15 @@ class Foresee(Utility):
 
         # return 1 when decaying promptly
         if pid not in ["211","-211","321","-321","310","130"]: return 1
+        # NEW: set decay probability to 0, if particle goes off in opposite direction.
+        if momentum.pz<0: return 0
 
         # lifetime and kinematics
         ctau = self.ctau(pid)
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
+        # print([ctau,momentum.pt,momentum.pz,momentum.m,theta,dbarz])
 
         # probability to decay in beampipe
         if pid in ["130", "310"]:
@@ -682,14 +691,18 @@ class Foresee(Utility):
                 if mass<masses[0] or mass>masses[-1]: continue
                 mass0, mass1 = 0, 1e10
                 for xmass in masses:
-                    if xmass<=mass and xmass>mass0: mass0=xmass
+                    if xmass==mass: mass0=mass1=xmass
+                    if xmass< mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
                 #load benchmark data
                 filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
                 filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
                 try:
                     momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-                    momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+                    if mass0==mass1:
+                        weights_llp1=weights_llp0
+                    else:
+                        momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
                 except:
                     print ("did not find file:", filename0, "or", filename1)
                     continue
@@ -697,7 +710,10 @@ class Foresee(Utility):
                 eps=1e-6
                 for p, w_lpp0, w_lpp1 in zip(momenta_llp0, weights_llp0, weights_llp1):
                     if condition is not None and eval(condition)==0: continue
-                    w_lpp = w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0)
+                    if mass0==mass1:
+                        w_lpp = w_lpp0 
+                    else:
+                        w_lpp = w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0)
                     momenta_lab.append(p)
                     weights_lab.append(w_lpp*coupling**2/coupling_ref**2)
                     # statistics
@@ -819,26 +835,26 @@ class Foresee(Utility):
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
 #### NEW CODE
-                    # if dbar<0:
-                    #     print("dbar negative ctau={} p.p={} mass={}".format(ctau,p.p,mass))
-                    #     prob_decay=0.
-                    # else:
-                    #     if self.distance/dbar>250.:
-                    #         prob_decay=0.
-                    #     else:
-                    #         try:
-                    #             prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
-                    #         except OverflowError as err:
-                    #             print("overflow dbar={}, p.p={} distance={}".format(dbar,p.p,self.distance))
-                    #             prob_decay=0.
-                    # couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    # nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
+                    if dbar<0:
+                        print("dbar negative ctau={} p.p={} mass={}".format(ctau,p.p,mass))
+                        prob_decay=0.
+                    else:
+                        if self.distance/dbar>250.:
+                            prob_decay=0.
+                        else:
+                            try:
+                                prob_decay = max(0,math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar))
+                            except OverflowError as err:
+                                print("overflow dbar={}, p.p={} distance={}".format(dbar,p.p,self.distance))
+                                prob_decay=0.
+                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
 
 
 # ORIGINAL CODE
-                    prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
-                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    nsignals[icoup] += weight_event * couplingfac * prob_decay * br
+                    # prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    # couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    # nsignals[icoup] += weight_event * couplingfac * prob_decay * br
 
                     ##
 
