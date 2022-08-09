@@ -52,6 +52,7 @@ class Utility():
         elif pid in ["223"         ]: return 0.78266
         elif pid in ["213" ,"-213" ]: return 0.77511
         elif pid in ["333"         ]: return 1.019461
+        elif pid in ["213" ,"-213" ]: return 0.77545
         elif pid in ["411" ,"-411" ]: return 1.86961
         elif pid in ["421" ,"-421" ]: return 1.86484
         elif pid in ["431" ,"-431" ]: return 1.96830
@@ -196,7 +197,14 @@ class Model(Utility):
     def set_ctau_2d(self,filename):
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
-        self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+        try:
+            self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+        except:
+            nx = len(np.unique(data[0]))
+            ny = int(len(data[0])/nx)
+            print (nx, ny)
+            self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
+            
 
     def set_ctau_2d_func(self,func):
         self.ctau_coupling_ref=None
@@ -231,7 +239,12 @@ class Model(Utility):
         if finalstates==None: finalstates=[None for _ in modes]
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
-            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            try:
+                function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            except:
+                nx = len(np.unique(data[0]))
+                ny = int(len(data[0])/nx)
+                function = interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -398,8 +411,8 @@ class Foresee(Utility):
 
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
 
-        t_centers = (t_edges[:-1] + t_edges[1:]) / 2
-        p_centers = (p_edges[:-1] + p_edges[1:]) / 2
+        t_centers = np.logspace(tmin+0.5*(tmax-tmin)/float(tnum), tmax-0.5*(tmax-tmin)/float(tnum), num=tnum)
+        p_centers = np.logspace(pmin+0.5*(pmax-pmin)/float(pnum), pmax-0.5*(pmax-pmin)/float(pnum), num=pnum) 
 
         list_t = []
         list_p = []
@@ -422,11 +435,12 @@ class Foresee(Utility):
         ticks = [np.log10(x) for x in ticks]
         ticklabels = np.array([[r"$10^{"+str(j)+"}$","","","","","","","",""] for j in range(-7,6)]).flatten()
         matplotlib.rcParams.update({'font.size': 15})
-        fig = plt.figure(figsize=(8,5.5))
+        #fig = plt.figure(figsize=(8,5.5))
+        fig = plt.figure(figsize=(7,5.5))
         ax = plt.subplot(1,1,1)
         h=ax.hist2d(x=list_t,y=list_p,weights=list_w,
                     bins=[tnum,pnum],range=[[tmin,tmax],[pmin,pmax]],
-                    norm=matplotlib.colors.LogNorm(), cmap="hsv",
+                    norm=matplotlib.colors.LogNorm(), cmap="rainbow",
         )
         fig.colorbar(h[3], ax=ax)
         ax.set_xlabel(r"angle wrt. beam axis $\theta$ [rad]")
@@ -600,12 +614,14 @@ class Foresee(Utility):
 
             # 2 body decays
             if model.production[key][0]=="2body":
-
+            
                 # load details of decay channel
                 pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
                 generator, energy, nsample, massrange = model.production[key][4], model.production[key][5], model.production[key][6], model.production[key][7]
+                
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
+                    
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
 
                 # load mother particle spectrum
@@ -779,7 +795,7 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
+        ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
         for coupling in couplings:
             ctau = model.get_ctau(mass, coupling)
             if self.channels is None: br = 1.
@@ -789,8 +805,7 @@ class Foresee(Utility):
             ctaus.append(ctau)
             brs.append(br)
             nsignals.append(0.)
-            stat_t.append([])
-            stat_e.append([])
+            stat_p.append([])
             stat_w.append([])
 
 # CHECK: NEW CODE STILL NEEDED
@@ -819,7 +834,9 @@ class Foresee(Utility):
                 # print "load", filename
                 particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
-            except: continue
+            except:
+                # print ("Warning: file "+filename+" not found")
+                continue
 
             # loop over particles, and record probablity to decay in volume
             for p,w in zip(particles_llp,weights_llp):
@@ -857,11 +874,10 @@ class Foresee(Utility):
 
                     ##
 
-                    stat_t[icoup].append(p.pt/p.pz)
-                    stat_e[icoup].append(p.e)
+                    stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
-        return couplings, ctaus, nsignals, stat_e, stat_w, stat_t
+        return couplings, ctaus, nsignals, stat_p, stat_w
 
     def get_events_interaction(self, mass, energy,
             modes=None,
@@ -874,11 +890,10 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        nsignals, stat_t, stat_e, stat_w = [], [], [], []
+        nsignals, stat_p, stat_w = [], [], []
         for coupling in couplings:
             nsignals.append(0.)
-            stat_t.append([])
-            stat_e.append([])
+            stat_p.append([])
             stat_w.append([])
 
         # loop over production modes
@@ -912,11 +927,10 @@ class Foresee(Utility):
                     prob_int = self.length / lamdaint
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_int
-                    stat_t[icoup].append(p.pt/p.pz)
-                    stat_e[icoup].append(p.e)
+                    stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_int)
 
-        return couplings, nsignals, stat_e, stat_w, stat_t
+        return couplings, nsignals, stat_p, stat_w
 
     ###############################
     #  Export Results as HEPMC File
@@ -995,17 +1009,16 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=1)
-        weighted_raw_data = np.array([energies[0], thetas[0]]).T
+        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes)
         
         # unweight sample
-        unweighted_raw_data = random.choices(weighted_raw_data, weights=weights[0], k=numberevent)
+        unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
         eventweight = sum(weights[0])/float(numberevent)
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
@@ -1013,31 +1026,26 @@ class Foresee(Utility):
             # print (factor)
         
         # setup decay channels
-        modes = self.model.br_functions.keys()
-        branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in modes]
-        finalstates = [self.model.br_finalstate[mode] for mode in modes]
-        channels = [[[fs, mode], br] for mode, br, fs in zip(modes, branchings, finalstates)]
+        decaymodes = self.model.br_functions.keys()
+        branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in decaymodes]
+        finalstates = [self.model.br_finalstate[mode] for mode in decaymodes]
+        channels = [[[fs, mode], br] for mode, br, fs in zip(decaymodes, branchings, finalstates)]
         br_other = 1-sum(branchings)
         if br_other>0: channels.append([[None,"unspecified"], br_other])
         channels=np.array(channels).T
         
         # get LLP momenta and decay location
         unweighted_data = []
-        for en, theta in unweighted_raw_data:
+        for momentum in unweighted_raw_data:
             # determine choice of final state
             while True:
                 pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
                 if (decaychannels is None) or (mode in decaychannels): break
-            # momentum
-            phi= random.uniform(-math.pi,math.pi)
-            mom = math.sqrt(en**2-mass**2)
-            pz, pt = mom*np.cos(theta), mom*np.sin(theta)
-            px, py = pt*np.cos(phi), pt*np.sin(phi)
-            momentum = LorentzVector(px,py,pz,en)
             # position
+            thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
             posz = random.uniform(0,self.length)
-            posx = theta*self.distance*np.cos(phi)
-            posy = theta*self.distance*np.sin(phi)
+            posx = thetax*self.distance
+            posy = thetay*self.distance
             post = posz + t0
             if notime: position = LorentzVector(posx,posy,posz+zfront,0)
             else     : position = LorentzVector(posx,posy,posz+zfront,post)
@@ -1054,6 +1062,9 @@ class Foresee(Utility):
           
         # write to HEPMC file
         self.write_hepmc_file(filename=filename, data=unweighted_data)
+        
+        #return
+        if return_data: return weighted_raw_data[0], weights, unweighted_raw_data
         
     ###############################
     #  Plotting and other final processing
