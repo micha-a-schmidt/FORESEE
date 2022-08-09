@@ -295,15 +295,15 @@ class Model(Utility):
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         if self.production[key][0] == "2body":
             scaling = self.production[key][8]
-            if scaling == "manual": return self.eval(self.production[key][3],mass,coupling)/self.eval(self.production[key][3], mass,coupling)
+            if scaling == "manual": return self.eval(self.production[key][3],mass,coupling)/self.eval(self.production[key][3], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
             scaling = self.production[key][9]
-            if scaling == "manual": return self.eval(self.production[key][4], mass,coupling)/self.eval(self.production[key][4], mass,coupling)
+            if scaling == "manual": return self.eval(self.production[key][4], mass,coupling)/self.eval(self.production[key][4], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
             scaling = self.production[key][6]
-            if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling)**2
+            if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling_ref)**2
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "direct":
             scaling = self.production[key][5]
