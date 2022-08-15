@@ -292,39 +292,41 @@ class Model(Utility):
     def eval(self,br,mass,coupling):
         return eval(br)
 
-    # def get_production_scaling(self, key, mass, coupling, coupling_ref):
-    #     if self.production[key][0] == "2body":
-    #         scaling = self.production[key][8]
-    #         if scaling == "manual": return self.eval(self.production[key][3],mass,coupling)/self.eval(self.production[key][3], mass,coupling_ref)
-    #         else: return (coupling/coupling_ref)**scaling
-    #     if self.production[key][0] == "3body":
-    #         scaling = self.production[key][9]
-    #         if scaling == "manual": return self.eval(self.production[key][4], mass,coupling)/self.eval(self.production[key][4], mass,coupling_ref)
-    #         else: return (coupling/coupling_ref)**scaling
-    #     if self.production[key][0] == "mixing":
-    #         scaling = self.production[key][6]
-    #         if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling_ref)**2
-    #         else: return (coupling/coupling_ref)**scaling
-    #     if self.production[key][0] == "direct":
-    #         scaling = self.production[key][5]
-    #         return (coupling/coupling_ref)**scaling
-
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         if self.production[key][0] == "2body":
             scaling = self.production[key][8]
-            if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
+            if scaling == "manual": return self.eval(self.production[key][3],mass,coupling)/self.eval(self.production[key][3], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
             scaling = self.production[key][9]
-            if scaling == "manual": return eval(self.production[key][4], {"coupling":coupling})/eval(self.production[key][4], {"coupling":coupling_ref})
+            if scaling == "manual": return self.eval(self.production[key][4], mass,coupling)/self.eval(self.production[key][4], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
             scaling = self.production[key][6]
-            if scaling == "manual":  return eval(self.production[key][2], {"coupling":coupling})**2/eval(self.production[key][2], {"coupling":coupling_ref})**2
+            if scaling == "manual":  return self.eval(self.production[key][2], mass,coupling)**2/self.eval(self.production[key][2], mass,coupling_ref)**2
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "direct":
             scaling = self.production[key][5]
             return (coupling/coupling_ref)**scaling
+
+## ORIGINAL CODE
+    # def get_production_scaling(self, key, mass, coupling, coupling_ref):
+    #     if self.production[key][0] == "2body":
+    #         scaling = self.production[key][8]
+    #         if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "3body":
+    #         scaling = self.production[key][9]
+    #         if scaling == "manual": return eval(self.production[key][4], {"coupling":coupling})/eval(self.production[key][4], {"coupling":coupling_ref})
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "mixing":
+    #         scaling = self.production[key][6]
+    #         if scaling == "manual":  return eval(self.production[key][2], {"coupling":coupling})**2/eval(self.production[key][2], {"coupling":coupling_ref})**2
+    #         else: return (coupling/coupling_ref)**scaling
+    #     if self.production[key][0] == "direct":
+    #         scaling = self.production[key][5]
+    #         return (coupling/coupling_ref)**scaling
+###
    
 class Foresee(Utility):
 
