@@ -61,6 +61,7 @@ class Utility():
         elif pid in ["521" ,"-521" ]: return 5.27929
         elif pid in ["531" ,"-531" ]: return 5.36679
         elif pid in ["541" ,"-541" ]: return 6.2749
+        elif pid in ["3"   ,"-3"   ]: return 0.0934 
         elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
         elif pid in ["11"  ,"-11"  ]: return 0.000511
@@ -277,9 +278,9 @@ class Model(Utility):
         if label is None: label=pid0
         self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling]
 
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, br_total, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
-        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling]
+        self.production[label]=["3body", pid0, pid1, pid2, br, br_total, generator, energy, nsample, massrange, scaling]
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
@@ -298,8 +299,8 @@ class Model(Utility):
             if scaling == "manual": return self.eval(self.production[key][3],mass,coupling)/self.eval(self.production[key][3], mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
-            scaling = self.production[key][9]
-            if scaling == "manual": return self.eval(self.production[key][4], mass,coupling)/self.eval(self.production[key][4], mass,coupling_ref)
+            scaling = self.production[key][10]
+            if scaling == "manual": return self.production[key][5](mass,coupling)/self.production[key][5](mass,coupling_ref)
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
             scaling = self.production[key][6]
@@ -651,7 +652,7 @@ class Foresee(Utility):
 
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
-                generator, energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7], model.production[key][8]
+                generator, energy, nsample, massrange = model.production[key][6], model.production[key][7], model.production[key][8], model.production[key][9]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
