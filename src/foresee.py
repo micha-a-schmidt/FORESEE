@@ -309,7 +309,7 @@ class Model(Utility):
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
             scaling = self.production[key][9]
-            if scaling == "manual": return self.production[key][10](mass,coupling) 
+            if scaling == "manual": return self.production[key][10](mass,coupling,coupling_ref) 
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
             scaling = self.production[key][6]
@@ -897,7 +897,7 @@ class Foresee(Utility):
                     dbar = ctau*p.p/mass
 #### NEW CODE
                     if dbar<0:
-                        print("dbar negative ctau={} p.p={} mass={}".format(ctau,p.p,mass))
+                        print("dbar negative ctau={} p.p={} mass={} coup={} icoup={}".format(ctau,p.p,mass,coup,icoup))
                         prob_decay=0.
                     else:
                         if self.distance/dbar>250.:
@@ -909,6 +909,8 @@ class Foresee(Utility):
                                 print("overflow dbar={}, p.p={} distance={}".format(dbar,p.p,self.distance))
                                 prob_decay=0.
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+#                    if type(couplingfac)==list or type(couplingfac)==np.ndarray:
+#                        print([key,mass,coup,coup_ref,couplingfac])
                     nsignals[icoup] += max(0,weight_event * couplingfac * prob_decay * br)
 
 
