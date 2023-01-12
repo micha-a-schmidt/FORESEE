@@ -46,6 +46,7 @@ class Utility():
         if   pid in ["2112","-2112"]: return 0.938
         elif pid in ["2212","-2212"]: return 0.938
         elif pid in ["211" ,"-211" ]: return 0.13957
+        elif pid in ["311" ,"-311" ]: return 0.497611
         elif pid in ["321" ,"-321" ]: return 0.49368
         elif pid in ["310" ,"130"  ]: return 0.49761
         elif pid in ["111"         ]: return 0.135
@@ -287,9 +288,9 @@ class Model(Utility):
         if label is None: label=pid0
         self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling, preselectioncut]
 
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2, scaling_fct = None):
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2, scaling_fct = None, br_fct = None):
         if label is None: label=pid0
-        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling,scaling_fct]
+        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling,scaling_fct,br_fct]
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
@@ -592,7 +593,7 @@ class Foresee(Utility):
 
         return particles,weights
 
-    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
+    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample,br_fct):
         # prepare output
         particles, weights = [], []
 
@@ -623,7 +624,10 @@ class Foresee(Utility):
             p_2,p_3=self.twobody_decay(p_q     ,q  ,m2,m3 ,phiQ,cosQ)
 
             #branching fraction
-            brval  = eval(br)
+            if br==None:
+                brval=br_fct(q2,mass,coupling)
+            else:
+                brval  = eval(br)
             brval *= (q2max-q2min)*(cthmax-cthmin)/float(nsample)
 
             #save
@@ -692,6 +696,7 @@ class Foresee(Utility):
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
                 generator, energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7], model.production[key][8]
+                br_fct = model.production[key][11]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
@@ -702,7 +707,7 @@ class Foresee(Utility):
 
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
+                momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample,br_fct)
 
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
