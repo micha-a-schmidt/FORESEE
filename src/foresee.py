@@ -434,7 +434,7 @@ class Foresee(Utility):
         return particles,weights
     
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]], vmin=None, vmax=None):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
 
         #get data
         tmin, tmax, tnum = prange[0]
@@ -1290,23 +1290,29 @@ class Foresee(Utility):
 
         # loop over production channels
         dirname = self.model.modelpath+"model/LLP_spectra/"
-        for channel, massrange, color, label in productions:
+        for channels, massrange, color, label in productions:
             if massrange is None: massrange = xlims
-
+            
             # loop over masses
             xvals, yvals = [], []
+            
+            # loop over channels
+            if isinstance(channels, (list, tuple, np.ndarray))== False: channels=[channels]
             for mass in masses:
                 if mass<massrange[0]: continue
                 if mass>massrange[1]: continue
-                try:
-                    data = np.load(dirname+energy+"TeV_"+channel+"_m_"+str(mass)+".npy")
-                    total = 0
-                    for logth, logp, w in data.T:
-                        if eval(condition): total+=w
+                total = 0
+                for channel in channels:
+                    filename = dirname+energy+"TeV_"+channel+"_m_"+str(mass)+".npy"
+                    try:
+                        data = np.load(filename)
+                        for logth, logp, w in data.T:
+                            if eval(condition): total+=w
+                    except:
+                        continue
+                if total>0:
                     xvals.append(mass)
                     yvals.append(total+1e-10)
-                except:
-                    continue
 
             # add to plot
             ax.plot(xvals, yvals, color=color, label=label)
